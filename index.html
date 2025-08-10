@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="fr" x-data="app()" x-init="init()">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Motorsport — Catalogue</title>
+    <!-- UI minimaliste, responsive -->
+    <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@2/css/pico.min.css">
+    <!-- Réactivité -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+      :root {
+        --brand:#e11d48;
+        --brand-ink:#fff;
+        --card-radius:16px;
+        --tag-icon-size:99px; /* ⇦ règle ici la taille des pastilles de tags */
+        --tag-gap:8px;
+        --overlay-bg: rgba(0,0,0,.8);
+      }
+      header.hero { padding: 1.25rem 0 0.5rem; }
+      .brand { color: var(--brand); font-weight: 700; }
+      .logo { height: 40px; width: auto; display:block; }
+      .brand-wrap { display:flex; align-items:center; gap:.5rem; }
+
+      .grid-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:1rem; }
+      .card { position:relative; border-radius:var(--card-radius); overflow:hidden; border:1px solid var(--pico-muted-border-color); background:var(--pico-card-background-color); }
+      .thumb-wrap { position:relative; }
+      .thumb { aspect-ratio:16/9; width:100%; object-fit:cover; background:#111; cursor: zoom-in; }
+
+      /* Pastilles de tags accrochées à la carte */
+      .badge-tags {
+        position:absolute; top:1px; right:1px;
+        display:flex; gap:var(--tag-gap); align-items:center; z-index:2;
+      }
+      .badge-tags .tag-ico {
+        width:var(--tag-icon-size); height:var(--tag-icon-size);
+        display:inline-flex; align-items:center; justify-content:center;
+        border-radius:999px; background:#ffffff;  /* halo blanc pour lisibilité */
+        box-shadow: 0 2px 10px rgba(0,0,0,.25);
+        overflow:hidden;
+      }
+      .badge-tags .tag-ico img { width:99%; height:99%; object-fit:contain; display:block; }
+      .badge-tags .tag-text {
+        font-size:.80rem; font-weight:600;
+        padding:.35rem .6rem; border-radius:999px;
+        background: #111; color:#fff; opacity:.85;
+        border:1px solid rgba(255,255,255,.25);
+      }
+
+      .row-between { display:flex; align-items:center; justify-content:space-between; }
+      .qty-badge { font-size:.8rem; padding:.25rem .5rem; border-radius:6px; }
+      .qty-ok { background:#ecfdf5; color:#065f46; }
+      .qty-low { background:#fffbeb; color:#92400e; }
+      .qty-zero { background:#fef2f2; color:#991b1b; }
+      .category-tabs { display:flex; gap:.5rem; flex-wrap:wrap; }
+      .category-tabs button.active { background:var(--brand); color:var(--brand-ink); }
+      .muted { color: var(--pico-muted-color); }
+      .footer-note { font-size:.85rem; }
+      .skeleton { background:linear-gradient(90deg,#eee,#f5f5f5,#eee); animation:sh 1.2s infinite; }
+      @keyframes sh { 0%{background-position:-200px 0} 100%{background-position:200px 0} }
+
+      /* Lightbox plein écran */
+      .lightbox {
+        position: fixed; inset: 0; display: grid; place-items: center;
+        background: var(--overlay-bg); z-index: 9999; padding: 4vmin;
+      }
+      .lightbox img {
+        max-width: 100%; max-height: 100%; border-radius: 10px;
+        box-shadow: 0 20px 60px rgba(0,0,0,.5);
+      }
+      .lightbox .close {
+        position:absolute; top:14px; right:14px; font-size:26px;
+        line-height:1; background:#fff; color:#111; border-radius:50%;
+        width:38px; height:38px; display:grid; place-items:center; cursor:pointer;
+        box-shadow: 0 4px 16px rgba(0,0,0,.3);
+      }
+
+      @media (max-width: 480px) {
+        :root { --tag-icon-size:32px; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="container hero">
+      <nav class="row-between">
+        <div class="brand-wrap">
+          <!-- Logo image si fourni, sinon fallback texte -->
+          <template x-if="logoPath">
+            <img class="logo" :src="logoPath" alt="Logo" @error="$el.style.display='none'" />
+          </template>
+          <strong class="brand">Motorsport</strong>
+        </div>
+        <a href="#" @click.prevent="resetFilters()" class="contrast">Réinitialiser</a>
+      </nav>
+      <h1 style="margin:.25rem 0 .75rem">Bienvenue chez Motorsport</h1>
+      <p class="muted" style="margin-top:-.5rem">Votre véhicule au meilleur prix!</p>
+
+      <div class="grid" style="align-items:end; gap:.75rem">
+        <div>
+          <label for="search">Recherche</label>
+          <input id="search" type="search" placeholder="Rechercher un modèle…" x-model.trim.debounce.200ms="q" />
+        </div>
+        <div>
+          <label for="sort">Tri</label>
+          <select id="sort" x-model="sortBy">
+            <option value="name-asc">Nom A→Z</option>
+            <option value="price-asc">Prix croissant</option>
+            <option value="price-desc">Prix décroissant</option>
+            <option value="qty-desc">Quantité décroissante</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="category-tabs" style="margin:.75rem 0 0.5rem">
+        <button class="secondary" :class="{active: activeCategory===null}" @click="activeCategory=null">Toutes</button>
+        <template x-for="cat in categories" :key="cat.id">
+          <button class="secondary" :class="{active: activeCategory===cat.id}" @click="activeCategory=cat.id" x-text="cat.name"></button>
+        </template>
+      </div>
+    </header>
+
+    <main class="container">
+      <template x-if="loading">
+        <div class="grid-cards" aria-busy="true">
+          <template x-for="i in 8" :key="i">
+            <article class="card skeleton" style="height:260px"></article>
+          </template>
+        </div>
+      </template>
+
+      <template x-if="!loading && error">
+        <article class="card" style="padding:1rem">
+          <strong>Erreur</strong>
+          <p x-text="error"></p>
+          <p class="muted">Vérifiez que <code>data.json</code> est présent et servi via HTTP (pas file://).</p>
+        </article>
+      </template>
+
+      <template x-if="!loading && !error && filteredItems.length===0">
+        <p class="muted">Aucun résultat.</p>
+      </template>
+
+      <section class="grid-cards" aria-live="polite" x-show="!loading && !error && filteredItems.length>0">
+        <template x-for="item in filteredItems" :key="item.id">
+          <article class="card">
+            <div class="thumb-wrap">
+              <!-- Pastilles de tags en coin -->
+              <div class="badge-tags">
+                <template x-for="tag in (item.tags||[])" :key="tag">
+                  <template x-if="tagIcon(tag)">
+                    <!-- icône seule si disponible -->
+                    <span class="tag-ico" :title="tag">
+                      <img :src="tagIcon(tag)" :alt="tag" />
+                    </span>
+                  </template>
+                  <template x-if="!tagIcon(tag)">
+                    <!-- sinon petit badge texte -->
+                    <span class="tag-text" x-text="tag"></span>
+                  </template>
+                </template>
+              </div>
+
+              <!-- Image cliquable => lightbox -->
+              <img class="thumb"
+                   :src="item.image || placeholder"
+                   :alt="item.name"
+                   loading="lazy"
+                   @click="lightbox.openWith(item.image || placeholder, item.name)" />
+            </div>
+
+            <div style="padding: .85rem">
+              <div class="row-between" style="gap:.5rem">
+                <strong x-text="item.name"></strong>
+                <span class="qty-badge" :class="qtyClass(item.quantity)" x-text="qtyLabel(item.quantity)"></span>
+              </div>
+              <p class="muted" style="margin:.25rem 0 .5rem" x-text="formatPrice(item.price)"></p>
+            </div>
+          </article>
+        </template>
+      </section>
+
+      <footer class="footer-note muted container" style="margin:1.25rem 0 2rem">
+        <p><small>Crée par Larry Call pour l'entreprise Motorsport - Homelife 2025</small></p>
+      </footer>
+    </main>
+
+    <!-- Lightbox -->
+    <div class="lightbox" x-show="lightbox.open" x-transition.opacity @click.self="lightbox.close()" x-cloak>
+      <button class="close" @click="lightbox.close()" aria-label="Fermer">×</button>
+      <img :src="lightbox.src" :alt="lightbox.alt">
+    </div>
+
+    <script>
+      function app() {
+        return {
+          loading: true,
+          error: null,
+          settings: { currency: '€', lowStockThreshold: 3, logoPath: 'images/logo/logo.png', tagIcons: {} },
+          defaultTagIcons: {
+            'Neuf': 'images/tags/neuf.png',
+            'Occasion': 'images/tags/occasion.png',
+            'Promo': 'images/tags/promo.png'
+          },
+          categories: [],
+          items: [],
+          activeCategory: null,
+          q: '',
+          sortBy: 'name-asc',
+          placeholder: 'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?q=80&w=1200&auto=format&fit=crop',
+
+          lightbox: {
+            open: false,
+            src: '',
+            alt: '',
+            openWith(src, alt){ this.src = src; this.alt = alt || ''; this.open = true; document.body.style.overflow='hidden'; },
+            close(){ this.open = false; this.src=''; this.alt=''; document.body.style.overflow=''; }
+          },
+
+          get logoPath() {
+            return (this.settings && this.settings.logoPath) ? this.settings.logoPath : 'images/logo/logo.png';
+          },
+
+          tagIcon(tag) {
+            const custom = (this.settings && this.settings.tagIcons) ? this.settings.tagIcons[tag] : null;
+            return custom || this.defaultTagIcons[tag] || null;
+          },
+
+          async init() {
+            try {
+              if (location.protocol === 'file:') {
+                throw new Error("Chargement local détecté (file://). Lancez un serveur local: python -m http.server 8080 puis ouvrez http://localhost:8080/");
+              }
+              const url = './data.json?ts=' + Date.now();
+              const res = await fetch(url, { cache: 'no-cache' });
+              if (!res.ok) throw new Error(`data.json: HTTP ${res.status} ${res.statusText}`);
+
+              const data = await res.json();
+              this.settings = Object.assign({ currency: '€', lowStockThreshold: 3 }, data.settings || {});
+              const cats = Array.isArray(data.categories) ? data.categories : [];
+              this.items = Array.isArray(data.vehicles) ? data.vehicles : [];
+
+              if (cats.length > 0) {
+                this.categories = cats;
+              } else {
+                const byId = new Map();
+                for (const it of this.items) {
+                  if (it.category && !byId.has(it.category)) byId.set(it.category, { id: it.category, name: it.category });
+                }
+                this.categories = Array.from(byId.values());
+              }
+
+              this.loading = false;
+            } catch (e) {
+              console.error('Chargement data.json échoué:', e);
+              this.error = e.message || 'Échec de chargement de data.json';
+              this.loading = false;
+            }
+          },
+
+          resetFilters() { this.q=''; this.activeCategory=null; this.sortBy='name-asc'; },
+
+          get filteredItems() {
+            let list = this.items.slice();
+            if (this.activeCategory) list = list.filter(v => v.category === this.activeCategory);
+            if (this.q) {
+              const t = this.q.toLowerCase();
+              list = list.filter(v => (v.name||'').toLowerCase().includes(t));
+            }
+            switch (this.sortBy) {
+              case 'price-asc': list.sort((a,b)=>(a.price||0)-(b.price||0)); break;
+              case 'price-desc': list.sort((a,b)=>(b.price||0)-(a.price||0)); break;
+              case 'qty-desc': list.sort((a,b)=>(b.quantity||0)-(a.quantity||0)); break;
+              default: list.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'fr')); break;
+            }
+            return list;
+          },
+
+          formatPrice(v) {
+            const n = Number(v||0);
+            try {
+              const cur = (this.settings.currency||'EUR');
+              const isSymbol = /[€$£¥]/.test(cur);
+              if (isSymbol) return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: cur === '€' ? 'EUR' : cur }).format(n);
+              return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: cur || 'EUR' }).format(n);
+            } catch { return n.toLocaleString('fr-FR') + ' ' + (this.settings.currency||'€'); }
+          },
+
+          qtyClass(q) { const t = Number(this.settings.lowStockThreshold||3); if ((q||0) <= 0) return 'qty-zero'; if (q < t) return 'qty-low'; return 'qty-ok'; },
+          qtyLabel(q) { const t = Number(this.settings.lowStockThreshold||3); if ((q||0) <= 0) return 'Rupture'; if (q < t) return `Faible (${q})`; return `En stock (${q})`; }
+        }
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,61 @@
+{
+  "_help": "Modifiez librement. Ajoutez ou supprimez des catégories et véhicules en copiant le format ci-dessous.",
+  "settings": {
+    "_": "Réglages globaux pour l’affichage et les icônes",
+    "currency": "EUR",
+    "lowStockThreshold": 3,
+    "logoPath": "images/logo/logo.png",
+    "tagIcons": {
+      "Neuf": "images/tags/neuf.png",
+      "Occasion": "images/tags/occasion.png",
+      "Promo": "images/tags/promo.png"
+    }
+  },
+  "categories": [
+    { "id": "sport", "name": "Sport" },
+    { "id": "suv",   "name": "SUV" },
+    { "id": "moto",  "name": "Moto" }
+  ],
+  "vehicles": [
+    {
+      "_": "Exemple véhicule neuf en stock",
+      "id": "Spr-01",
+      "name": "AMC Javelin",
+      "category": "sport",
+      "price": 358000,
+      "quantity": 5,
+      "image": "images/sport/amx-standard.webp",
+      "tags": ["Neuf"]
+    },
+    {
+      "_": "Exemple véhicule en faible stock + Promo",
+      "id": "spr-02",
+      "name": "Lotus Elise S2",
+      "category": "sport",
+      "price": 259999,
+      "quantity": 2,
+      "image": "images/sport/s2-high.webp",
+      "tags": ["Promo"]
+    },
+    {
+      "_": "SUV en rupture",
+      "id": "suv-10",
+      "name": "Chevrolet Tahoe 2008",
+      "category": "suv",
+      "price": 1754994,
+      "quantity": 0,
+      "image": "images/suv/tahoe-high.webp",
+      "tags": []
+    },
+    {
+      "_": "Moto d’occasion",
+      "id": "moto-21",
+      "name": "BMW R1200",
+      "category": "moto",
+      "price": 138400,
+      "quantity": 8,
+      "image": "images/moto/1200-high.webp",
+      "tags": ["Occasion"]
+    }
+  ]
+}
