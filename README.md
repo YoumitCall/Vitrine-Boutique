@@ -1,9 +1,9 @@
-# Motorsport
-Catalogue statique “Motorsport” (Arma 3 RP) — vitrine des véhicules avec photos, prix et quantités.
+# Vitrine Boutique
+Catalogue statique (Arma 3 RP) — vitrine avec photos, prix, quantités.
 
 ## 🚗 Présentation
 
-Bienvenue sur **Motorsport Catalogue** — un site vitrine statique pour afficher les véhicules disponibles dans le jeu (Arma 3 RP ou autre).
+Un site vitrine statique pour afficher les véhicules ou autres biens disponibles dans le jeu (Arma 3 RP).
 Il montre **photos**, **prix**, **quantités**, et des **pastilles** (Neuf, Occasion, Promo).
 Il se met à jour simplement en modifiant un fichier : **`data.json`**.
 
@@ -38,7 +38,7 @@ Motorsport/
 * Les fichiers sont dans `images/tags/`.
 * Changez-les si vous voulez un autre style (même nom et extension).
 
-### 3️⃣ Modifier les véhicules
+### 3️⃣ Modifier les objets
 
 * Ouvrez `data.json` → section `"vehicles"`.
 * Chaque véhicule suit ce format :
